@@ -16,10 +16,15 @@ header span.badge {
   font-size: 0.7rem; padding: 2px 8px;
   border-radius: 10px; text-transform: uppercase; letter-spacing: 0.5px;
 }
-.btn-exemplo {
+.header-downloads {
   margin-left: auto;
-  background: transparent;
-  border: 1px solid rgba(255,255,255,0.35);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.btn-exemplo {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.5);
   color: #fff;
   font-size: 0.78rem;
   padding: 5px 13px;
@@ -29,8 +34,16 @@ header span.badge {
   transition: background 0.15s, border-color 0.15s;
 }
 .btn-exemplo:hover {
-  background: rgba(255,255,255,0.12);
-  border-color: rgba(255,255,255,0.6);
+  background: rgba(255,255,255,0.22);
+  border-color: rgba(255,255,255,0.8);
+}
+.btn-exemplo-sec {
+  background: transparent;
+  border-color: rgba(255,255,255,0.25);
+  opacity: 0.75;
+}
+.btn-exemplo-sec:hover {
+  opacity: 1;
 }
 
 nav { background: #16213e; padding: 0 32px; display: flex; gap: 4px; }
