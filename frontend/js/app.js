@@ -1,6 +1,6 @@
 const API_BASE = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
   ? "http://localhost:8000"
-  : "https://RENDER_APP_NAME.onrender.com";
+  : "https://validacao-docs-comerciais-production.up.railway.app";
 
 // Tópicos extraídos do PDF — preenchidos após upload
 let topicosDinamicos = null;
