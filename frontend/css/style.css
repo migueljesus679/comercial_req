@@ -16,6 +16,22 @@ header span.badge {
   font-size: 0.7rem; padding: 2px 8px;
   border-radius: 10px; text-transform: uppercase; letter-spacing: 0.5px;
 }
+.btn-exemplo {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.35);
+  color: #fff;
+  font-size: 0.78rem;
+  padding: 5px 13px;
+  border-radius: 6px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn-exemplo:hover {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.6);
+}
 
 nav { background: #16213e; padding: 0 32px; display: flex; gap: 4px; }
 nav button {
