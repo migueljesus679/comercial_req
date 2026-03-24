@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Validação de Documentos Comerciais</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <header>
+    <h1>Validação de Documentos Comerciais</h1>
+    <span class="badge">Demo</span>
+  </header>
+
+  <nav>
+    <button class="active" data-tab="tab-validar">Nova Validação</button>
+    <button data-tab="tab-historico">Histórico</button>
+  </nav>
+
+  <main>
+
+    <!-- ── TAB: Nova Validação ── -->
+    <div id="tab-validar" class="tab-content active">
+
+      <form id="form-validacao">
+
+        <!-- 1. Upload PDF -->
+        <div class="card">
+          <h2>1. Documento PDF</h2>
+          <div id="upload-area" class="upload-area">
+            <div class="upload-icon">&#128196;</div>
+            <p>Clica aqui ou arrasta o ficheiro PDF</p>
+            <p class="upload-hint">Apenas ficheiros .pdf</p>
+            <span id="filename" class="filename" style="display:none"></span>
+          </div>
+          <input type="file" id="file-input" accept=".pdf" />
+        </div>
+
+        <!-- 2. Requisitos por tópico -->
+        <div class="card">
+          <div class="req-cabecalho">
+            <h2>2. Requisitos esperados</h2>
+            <div class="req-acoes">
+              <button type="button" id="btn-expandir-todos" class="btn-link">Expandir todos</button>
+              <span class="sep">|</span>
+              <button type="button" id="btn-limpar-tudo" class="btn-link btn-link-danger">Limpar tudo</button>
+            </div>
+          </div>
+          <!-- Gerado pelo JavaScript -->
+          <div id="topicos-container"></div>
+        </div>
+
+        <!-- 3. Validar -->
+        <div class="card">
+          <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>A analisar o documento... Por favor aguarda.</p>
+          </div>
+          <div id="erro-box" class="erro-box"></div>
+          <button type="submit" id="btn-validar" class="btn-primary">
+            Validar Documento
+          </button>
+        </div>
+
+      </form>
+
+      <!-- Resultado -->
+      <div id="resultado-container" class="card">
+        <h2>Resultado da Validação</h2>
+
+        <p class="res-ficheiro-label">
+          Ficheiro: <strong id="res-ficheiro"></strong>
+        </p>
+
+        <div class="resultado-header">
+          <span id="status-badge" class="status-badge"></span>
+          <div class="score-box">
+            <span id="res-score" class="score-valor">0</span>
+            <span class="score-label">% conformidade</span>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span id="stat-total" class="stat-num">0</span>
+            <label>Total</label>
+          </div>
+          <div class="stat-item stat-conf">
+            <span id="stat-conformes" class="stat-num">0</span>
+            <label>Conformes</label>
+          </div>
+          <div class="stat-item stat-parc">
+            <span id="stat-parciais" class="stat-num">0</span>
+            <label>Parciais</label>
+          </div>
+          <div class="stat-item stat-nao">
+            <span id="stat-nao-conformes" class="stat-num">0</span>
+            <label>Não Conformes</label>
+          </div>
+        </div>
+
+        <div id="lista-detalhes"></div>
+      </div>
+
+    </div>
+
+    <!-- ── TAB: Histórico ── -->
+    <div id="tab-historico" class="tab-content">
+      <div class="card">
+        <h2>Histórico de Validações</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Ficheiro</th>
+              <th>Estado</th>
+              <th>Score</th>
+              <th>Req.</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tabela-historico">
+            <tr><td colspan="6" class="sem-dados">Carrega o histórico clicando no separador acima.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Modal detalhe -->
+  <div id="modal-overlay" class="modal-overlay">
+    <div class="modal">
+      <button id="modal-close" class="modal-close">&times;</button>
+      <h2>Detalhe da Validação</h2>
+      <div id="modal-conteudo"></div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
