@@ -35,7 +35,7 @@ A ferramenta consegue verificar, entre outros:
 
 ## Como usar
 
-Acede à ferramenta em: **[link do GitHub Pages]**
+Acede à ferramenta em: https://migueljesus679.github.io/comercial_req/
 
 Não é necessário instalar nada. Funciona diretamente no browser.
 
