@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import os
 
 from services.pdf_service import extrair_texto_pdf, detectar_estrutura_pdf
-from services.validation_service import validar_documento
+from services.validation_service import validar_documento, validar_campos_estruturados
 from services.db_service import guardar_validacao, listar_validacoes, obter_validacao
 
 load_dotenv()
@@ -55,16 +55,23 @@ async def validar_documento_endpoint(
     if len(conteudo_bytes) == 0:
         raise HTTPException(status_code=400, detail="O ficheiro PDF está vazio.")
 
-    # Extrair texto do PDF
+    # Extrair estrutura do PDF (tópicos + campos)
     try:
-        texto_pdf = extrair_texto_pdf(conteudo_bytes)
-    except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        topicos = detectar_estrutura_pdf(conteudo_bytes)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao processar PDF: {str(e)}")
 
-    # Validar com algoritmo (sem IA)
-    resultado = validar_documento(texto_pdf, requisitos)
+    if not topicos:
+        raise HTTPException(status_code=422, detail="Não foi possível detectar a estrutura do PDF. Certifica-te de que o ficheiro não é uma imagem/scan.")
+
+    # Extrair texto completo para guardar na BD
+    try:
+        texto_pdf = extrair_texto_pdf(conteudo_bytes)
+    except Exception:
+        texto_pdf = ""
+
+    # Validar campo a campo
+    resultado = validar_campos_estruturados(topicos, requisitos)
 
     if "erro" in resultado:
         raise HTTPException(status_code=422, detail=resultado["erro"])

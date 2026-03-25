@@ -33,7 +33,7 @@ SINONIMOS: Dict[str, List[str]] = {
 PADROES_UNIDADE = [
     (r"(\d+[\.,]?\d*)\s*ppm\b", "ppm"),
     (r"(\d+[\.,]?\d*)\s*dpi\b", "dpi"),
-    (r"(\d+[\.,]?\d*)\s*x\s*(\d+[\.,]?\d*)\s*dpi\b", "dpi_res"),
+    (r"(\d+[\.,]?\d*)\s*[x×]\s*(\d+[\.,]?\d*)\s*dpi\b", "dpi_res"),
     (r"(\d+[\.,]?\d*)\s*g\s*[/\/]\s*m[²2]", "g/m2"),
     (r"(\d+[\.,]?\d*)\s*kw\b", "kw"),
     (r"(\d+[\.,]?\d*)\s*db[a]?\b", "db"),
@@ -110,6 +110,180 @@ def detetar_modificador(texto: str, pos: int) -> str:
     if any(p in janela for p in ["maximo", "no maximo", "ate", "abaixo de", "inferior a", "menor que", "maxima"]):
         return "max"
     return "exato"
+
+
+def comparar_campo(label: str, valor_usuario: str, valor_pdf: str) -> Optional[Dict[str, Any]]:
+    """Compara o valor inserido pelo utilizador com o valor extraído do PDF para um campo específico."""
+    req = normalizar(valor_usuario.strip())
+    pdf = normalizar(valor_pdf.strip())
+
+    if not req:
+        return None
+
+    base = {"requisito": f"{label}: {valor_usuario}"}
+
+    # Determina se o valor tem texto (letras) ou é puramente numérico
+    tem_letras = bool(re.search(r'[a-zA-Z]', req))
+
+    # 1. Correspondência de texto: só se o valor tem letras, ≥3 chars, e está contido no PDF
+    if tem_letras and len(req) >= 3 and req in pdf:
+        return {**base,
+            "status": "CONFORME", "score": 100,
+            "palavras_encontradas": [], "palavras_nao_encontradas": [],
+            "confirmacoes": [f"✓ '{valor_usuario}' corresponde ao PDF ('{valor_pdf}')"],
+            "problemas": []}
+
+    problemas: List[str] = []
+    confirmacoes: List[str] = []
+
+    # 2. Valores numéricos com unidade reconhecida (ex: "60 ppm", "400 g/m²", "3600×2400 dpi")
+    nums_req = extrair_numeros(valor_usuario)
+    nums_pdf_campo = extrair_numeros(valor_pdf)
+
+    for nr in nums_req:
+        mesma_und = [np for np in nums_pdf_campo if np["unidade"] == nr["unidade"]]
+        if mesma_und:
+            melhor = max(np["valor"] for np in mesma_und)
+            if abs(melhor - nr["valor"]) / max(nr["valor"], 1) > 0.05:
+                problemas.append(f"PDF tem {melhor} {nr['unidade']}, não {nr['valor']} {nr['unidade']}")
+            else:
+                confirmacoes.append(f"✓ {nr['valor']} {nr['unidade']}")
+        else:
+            problemas.append(f"'{nr['raw']}' não encontrado — PDF indica: '{valor_pdf}'")
+
+    if problemas:
+        return {**base,
+            "status": "NAO_CONFORME", "score": 0,
+            "palavras_encontradas": confirmacoes, "palavras_nao_encontradas": [],
+            "confirmacoes": confirmacoes, "problemas": problemas}
+
+    # 3. Valor puramente numérico sem unidade reconhecida (ex: "12", "1200x1900")
+    #    Compara via extrair_numeros do campo PDF — nunca por substrings de dígitos
+    e_puramente_numerico = not tem_letras and bool(re.search(r'\d', req))
+    if e_puramente_numerico and not nums_req:
+        if not nums_pdf_campo:
+            # Campo do PDF não tem valores numéricos com unidade → número não faz sentido aqui
+            return {**base,
+                "status": "NAO_CONFORME", "score": 0,
+                "palavras_encontradas": [], "palavras_nao_encontradas": [],
+                "confirmacoes": [],
+                "problemas": [f"'{valor_usuario}' não corresponde — campo contém: '{valor_pdf}'"]}
+        numeros_float = []
+        for n in re.findall(r"\d+[\.,]?\d*", req):
+            try:
+                numeros_float.append(float(n.replace(",", ".")))
+            except ValueError:
+                pass
+        valores_pdf = [np["valor"] for np in nums_pdf_campo]
+        for n_user in numeros_float:
+            if not any(abs(v - n_user) / max(n_user, 0.001) <= 0.05 for v in valores_pdf):
+                return {**base,
+                    "status": "NAO_CONFORME", "score": 0,
+                    "palavras_encontradas": [], "palavras_nao_encontradas": [],
+                    "confirmacoes": [],
+                    "problemas": [f"Valor '{valor_usuario}' não corresponde — PDF indica: '{valor_pdf}'"]}
+        return {**base,
+            "status": "CONFORME", "score": 100,
+            "palavras_encontradas": [], "palavras_nao_encontradas": [],
+            "confirmacoes": [f"✓ Valor {valor_usuario} verificado"],
+            "problemas": []}
+
+    # 4. Palavras-chave — comparadas apenas contra o valor do campo (não o PDF todo)
+    tokens = re.split(r"[\s\-\/\(\)\[\]:,;×x+]+", req)
+    palavras = [t for t in tokens if t and t not in STOP_WORDS and len(t) > 2 and not re.match(r"^\d+$", t)]
+
+    if not palavras:
+        if confirmacoes:
+            return {**base,
+                "status": "CONFORME", "score": 100,
+                "palavras_encontradas": [], "palavras_nao_encontradas": [],
+                "confirmacoes": confirmacoes, "problemas": []}
+        return {**base,
+            "status": "NAO_CONFORME", "score": 0,
+            "palavras_encontradas": [], "palavras_nao_encontradas": [],
+            "confirmacoes": [],
+            "problemas": [f"'{valor_usuario}' não corresponde ao PDF ('{valor_pdf}')"]}
+
+    encontradas = [p for p in palavras if p in pdf]
+    nao_encontradas = [p for p in palavras if p not in pdf]
+
+    if nao_encontradas:
+        return {**base,
+            "status": "NAO_CONFORME",
+            "score": round(len(encontradas) / len(palavras) * 100),
+            "palavras_encontradas": encontradas,
+            "palavras_nao_encontradas": nao_encontradas,
+            "confirmacoes": confirmacoes,
+            "problemas": [f"'{valor_usuario}' não corresponde — campo do PDF contém: '{valor_pdf}'"]}
+
+    return {**base,
+        "status": "CONFORME", "score": 100,
+        "palavras_encontradas": encontradas, "palavras_nao_encontradas": [],
+        "confirmacoes": confirmacoes + [f"✓ Valor verificado"],
+        "problemas": []}
+
+
+def validar_campos_estruturados(topicos: list, requisitos_texto: str) -> Dict[str, Any]:
+    """Valida campo a campo: compara o valor do utilizador com o valor do PDF para cada campo."""
+    # Mapa: label normalizado → valor extraído do PDF
+    mapa_pdf: Dict[str, str] = {}
+    for topico in topicos:
+        for campo in topico.get("campos", []):
+            chave = normalizar(campo["label"])
+            mapa_pdf[chave] = campo["valor"]
+
+    detalhes = []
+    for linha in requisitos_texto.splitlines():
+        if ":" not in linha:
+            continue
+        partes = linha.split(":", 1)
+        label = partes[0].strip()
+        valor_usuario = partes[1].strip()
+        if not valor_usuario:
+            continue
+
+        label_norm = normalizar(label)
+        valor_pdf = mapa_pdf.get(label_norm)
+
+        if not valor_pdf:
+            detalhes.append({
+                "requisito": linha,
+                "status": "PARCIAL", "score": 50,
+                "palavras_encontradas": [], "palavras_nao_encontradas": [],
+                "confirmacoes": [],
+                "problemas": [f"Campo '{label}' não encontrado na estrutura do PDF"],
+            })
+            continue
+
+        resultado = comparar_campo(label, valor_usuario, valor_pdf)
+        if resultado:
+            detalhes.append(resultado)
+
+    if not detalhes:
+        return {"erro": "Nenhum requisito válido encontrado. Preenche pelo menos um campo."}
+
+    conformes = [d for d in detalhes if d["status"] == "CONFORME"]
+    parciais  = [d for d in detalhes if d["status"] == "PARCIAL"]
+    nao_conf  = [d for d in detalhes if d["status"] == "NAO_CONFORME"]
+    total     = len(detalhes)
+    score_geral = round(sum(d["score"] for d in detalhes) / total)
+
+    if not nao_conf and not parciais:
+        status_geral = "CONFORME"
+    elif score_geral >= 50:
+        status_geral = "PARCIALMENTE CONFORME"
+    else:
+        status_geral = "NÃO CONFORME"
+
+    return {
+        "status_geral": status_geral,
+        "score_geral": score_geral,
+        "total_requisitos": total,
+        "conformes": len(conformes),
+        "parciais": len(parciais),
+        "nao_conformes": len(nao_conf),
+        "detalhes": detalhes,
+    }
 
 
 def verificar_requisito(linha: str, texto_pdf: str) -> Optional[Dict[str, Any]]:
